@@ -184,13 +184,16 @@ public class Session : IDisposable {
             header.Write(msg.ID.Value);
             await this._socket.SendAsync(this.Protocol.Encode(header), SocketFlags.None).ConfigureAwait(false);
 
+            var remaining = size;
             for (var i = 0; i < chunks; i++) {
-                var len = Math.Min(Message.BufferSize, size);
+                var len = Math.Min(Message.BufferSize, remaining);
 
                 var chunk = new Message(MessageID.MASSIVE, (ushort)(len + 1));
                 chunk.Write(false);
                 chunk.Write<byte>(msg.AsDataSpan().Slice(i * Message.BufferSize, len));
-                await this._socket.SendAsync(this.Protocol.Encode(header), SocketFlags.None).ConfigureAwait(false);
+                await this._socket.SendAsync(this.Protocol.Encode(chunk), SocketFlags.None).ConfigureAwait(false);
+
+                remaining -= len;
             }
         }
         else {
