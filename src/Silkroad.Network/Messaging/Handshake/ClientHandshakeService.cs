@@ -14,7 +14,7 @@ public class ClientHandshakeService {
     private uint _remotePublic;
 
     [MessageHandler(MessageID.HANDSHAKE)]
-    public Task Handshake(Session session, Message msg) {
+    public async Task Handshake(Session session, Message msg) {
         var protocol = session.Protocol;
 
         var opt = msg.Read<MessageProtocolOption>();
@@ -31,15 +31,36 @@ public class ClientHandshakeService {
             protocol.Crc = new MessageCRC(msg.Read<uint>());
         }
 
-        if (opt.HasFlag(MessageProtocolOption.KeyExchange)) return session.SendAsync(this.Setup(session, msg));
+        if (opt.HasFlag(MessageProtocolOption.KeyExchange)) {
+            await session.SendAsync(this.Setup(session, msg));
+            return;
+        }
 
-        if (opt.HasFlag(MessageProtocolOption.KeyChallenge)) return session.SendAsync(this.Challenge(session, msg));
+        if (opt.HasFlag(MessageProtocolOption.KeyChallenge)) {
+            await session.SendAsync(this.Challenge(session, msg));
+            // A real client identifies itself right after completing the handshake in this
+            // (client) role: IDENTITY (0x2001), encrypted, an ASCII module-name string
+            // ("SR_Client" for every real client build observed) then a single flag byte
+            // (0). MessageID.IDENTITY already existed in this library but was never actually
+            // sent anywhere - completing the handshake without it is a real, silent
+            // behavioral gap from a genuine client that a real server's own session
+            // validation can notice and act on, even though it isn't part of the documented
+            // handshake exchange itself.
+            await session.SendAsync(BuildIdentity());
+            return;
+        }
 
         // Make sure we aren't in a state to accept handshake-less connections.
         if (protocol.State != MessageProtocolState.None) throw new DistortedHandshakeException();
 
         protocol.State = MessageProtocolState.Completed;
-        return Task.CompletedTask;
+    }
+
+    private static Message BuildIdentity() {
+        var msg = new Message(MessageID.IDENTITY, true);
+        msg.Write("SR_Client");
+        msg.Write((byte)0);
+        return msg;
     }
 
     [MessageHandler(MessageID.HANDSHAKE_ACCEPT)]
