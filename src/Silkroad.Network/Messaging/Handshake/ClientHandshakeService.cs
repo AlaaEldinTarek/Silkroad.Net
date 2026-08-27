@@ -32,12 +32,12 @@ public class ClientHandshakeService {
         }
 
         if (opt.HasFlag(MessageProtocolOption.KeyExchange)) {
-            await session.SendAsync(this.Setup(session, msg));
+            await session.SendAsync(this.Setup(session, msg)).ConfigureAwait(false);
             return;
         }
 
         if (opt.HasFlag(MessageProtocolOption.KeyChallenge)) {
-            await session.SendAsync(this.Challenge(session, msg));
+            await session.SendAsync(this.Challenge(session, msg)).ConfigureAwait(false);
             // A real client identifies itself right after completing the handshake in this
             // (client) role: IDENTITY (0x2001), encrypted, an ASCII module-name string
             // ("SR_Client" for every real client build observed) then a single flag byte
@@ -46,7 +46,7 @@ public class ClientHandshakeService {
             // behavioral gap from a genuine client that a real server's own session
             // validation can notice and act on, even though it isn't part of the documented
             // handshake exchange itself.
-            await session.SendAsync(BuildIdentity());
+            await session.SendAsync(BuildIdentity()).ConfigureAwait(false);
             return;
         }
 
