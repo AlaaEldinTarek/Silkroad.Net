@@ -14,7 +14,7 @@ public class ClientHandshakeService {
     private uint _remotePublic;
 
     [MessageHandler(MessageID.HANDSHAKE)]
-    public async Task Handshake(Session session, Message msg) {
+    public async Task HandshakeAsync(Session session, Message msg) {
         var protocol = session.Protocol;
 
         var opt = msg.Read<MessageProtocolOption>();
